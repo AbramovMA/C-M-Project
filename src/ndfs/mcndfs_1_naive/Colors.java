@@ -11,6 +11,7 @@ import graph.State;
 public class Colors {
 
     private final Map<State, Color> map = new HashMap<State, Color>();
+    private final Map<State, Boolean> pinkMap = new HashMap<State, Boolean>();
 
     /**
      * Returns <code>true</code> if the specified state has the specified color,
@@ -43,8 +44,17 @@ public class Colors {
     public void color(State state, Color color) {
         if (color == Color.WHITE) {
             map.remove(state);
-        } else {
+        }
+        else {
             map.put(state, color);
         }
+    }
+
+    public void setPink(State state, Boolean bool) {
+        pinkMap.put(state, bool);
+    }
+
+    public boolean isPink(State state) {
+        return pinkMap.get(state);
     }
 }

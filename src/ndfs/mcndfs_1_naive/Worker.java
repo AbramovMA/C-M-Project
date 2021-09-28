@@ -7,16 +7,24 @@ import graph.Graph;
 import graph.GraphFactory;
 import graph.State;
 
+import java.util.ArrayList;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+
 /**
  * This is a straightforward implementation of Figure 1 of
  * <a href="http://www.cs.vu.nl/~tcs/cm/ndfs/laarman.pdf"> "the Laarman
  * paper"</a>.
  */
-public class Worker {
+public class Worker implements Callable<Boolean> {
 
     private final Graph graph;
-    private final Colors colors = new Colors();
+    private final Colors localColors = new Colors();
+    private final GlobalCount globalCount;
+    private final GlobalReds globalReds;
+    private final ArrayList<Future<Boolean>> futureArray;
     private boolean result = false;
+    private int threadId;
 
     // Throwing an exception is a convenient way to cut off the search in case a
     // cycle is found.
@@ -32,52 +40,64 @@ public class Worker {
      * @throws FileNotFoundException
      *             is thrown in case the file could not be read.
      */
-    public Worker(File promelaFile) throws FileNotFoundException {
+    public Worker(File promelaFile, int id, GlobalCount globalCount, GlobalReds globalReds, ArrayList<Future<Boolean>> futureArray) throws FileNotFoundException {
 
         this.graph = GraphFactory.createGraph(promelaFile);
+        this.threadId = id;
+        this.globalCount = globalCount;
+        this.globalReds = globalReds;
+        this.futureArray = futureArray;
     }
 
     private void dfsRed(State s) throws CycleFoundException {
-
+        localColors.setPink(s, true);
         for (State t : graph.post(s)) {
-            if (colors.hasColor(t, Color.CYAN)) {
+            if (localColors.hasColor(t, Color.CYAN)) {
+                System.out.println("Thread " + threadId + " found the accepting cycle.");
+                System.out.flush();
                 throw new CycleFoundException();
-            } else if (colors.hasColor(t, Color.BLUE)) {
-                colors.color(t, Color.RED);
+            }
+            if (!localColors.isPink(s) && !globalReds.isRed(t)) {
                 dfsRed(t);
             }
         }
+        if (s.isAccepting()) {
+            globalCount.decCount(s);
+            while (true) {
+                if (globalCount.getCount(s) == 0) {
+                    break;
+                }
+            }
+        }
+        globalReds.setRed(s, true);
+        localColors.setPink(s, false);
     }
 
     private void dfsBlue(State s) throws CycleFoundException {
-
-        colors.color(s, Color.CYAN);
+        localColors.color(s, Color.CYAN);
         for (State t : graph.post(s)) {
-            if (colors.hasColor(t, Color.WHITE)) {
+            if (localColors.hasColor(t, Color.WHITE) && !globalReds.isRed(t)) {
                 dfsBlue(t);
             }
         }
         if (s.isAccepting()) {
+            globalCount.incCount(s);
             dfsRed(s);
-            colors.color(s, Color.RED);
-        } else {
-            colors.color(s, Color.BLUE);
         }
+        localColors.color(s, Color.BLUE);
     }
 
     private void nndfs(State s) throws CycleFoundException {
         dfsBlue(s);
     }
 
-    public void run() {
+    public Boolean call() {
         try {
             nndfs(graph.getInitialState());
         } catch (CycleFoundException e) {
             result = true;
         }
-    }
 
-    public boolean getResult() {
         return result;
     }
 }
