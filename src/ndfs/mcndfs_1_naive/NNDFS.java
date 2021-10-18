@@ -21,7 +21,7 @@ public class NNDFS implements NDFS {
      * @throws FileNotFoundException
      *             is thrown in case the file could not be read.
      */
-    public NNDFS(File promelaFile) throws FileNotFoundException {
+    public NNDFS(File promelaFile, int nrWorkers) throws FileNotFoundException {
 
         this.worker = new Worker(promelaFile);
     }
