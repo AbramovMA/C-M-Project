@@ -3,13 +3,18 @@ package ndfs.mcndfs_1_naive;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import graph.State;
 import ndfs.NDFS;
 
 /**
@@ -18,9 +23,11 @@ import ndfs.NDFS;
  */
 public class NNDFS implements NDFS {
 
-    private final int               numberOfWorkers;
-    final ExecutorService           threadPool;
-    private final ArrayList<Worker> workerList;
+    private final int                       numberOfWorkers;
+    private final ExecutorService           threadPool;
+    private final ArrayList<Worker>         workerList;
+    private final Map<State, AtomicInteger> backtrackingCount = new ConcurrentHashMap<>();
+    private final Set<State>                redStates         = new HashSet<>();
 
     /**
      * Constructs an NDFS object using the specified Promela file.
@@ -36,7 +43,7 @@ public class NNDFS implements NDFS {
         this.workerList      = new ArrayList<>(numberOfWorkers);
         
         for (int i = 0; i < numberOfWorkers; i++)
-            workerList.add(new Worker(promelaFile, i));
+            workerList.add(new Worker(promelaFile, i, backtrackingCount, redStates));
     }
 
     @Override
@@ -46,7 +53,8 @@ public class NNDFS implements NDFS {
         for (Worker w : workerList)
             awaitedResults.add(threadPool.submit(w));
 
-        while(!awaitedResults.isEmpty() && !cycleFound)
+        while(!awaitedResults.isEmpty() && !cycleFound){
+            ArrayList<Future<Boolean>> toBeRemoved = new ArrayList<>();
             for (Future<Boolean> workerResult : awaitedResults)
                 if (workerResult.isDone()){
                     try{
@@ -55,8 +63,11 @@ public class NNDFS implements NDFS {
                             break;
                     }catch (Exception e){
                     }
-                    awaitedResults.remove(workerResult);
+                    toBeRemoved.add(workerResult);
+                    // awaitedResults.remove(workerResult);
                 }
+            awaitedResults.removeAll(toBeRemoved);
+        }
 
         threadPool.shutdownNow();
         try{
