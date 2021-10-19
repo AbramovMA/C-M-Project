@@ -2,6 +2,7 @@ package ndfs.mcndfs_1_naive;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.concurrent.Callable;
 
 import graph.Graph;
 import graph.GraphFactory;
@@ -12,11 +13,11 @@ import graph.State;
  * <a href="http://www.cs.vu.nl/~tcs/cm/ndfs/laarman.pdf"> "the Laarman
  * paper"</a>.
  */
-public class Worker {
+public class Worker implements Callable<Boolean>{
 
-    private final Graph graph;
+    private final Graph  graph;
     private final Colors colors = new Colors();
-    private boolean result = false;
+    private int          index;
 
     // Throwing an exception is a convenient way to cut off the search in case a
     // cycle is found.
@@ -32,13 +33,12 @@ public class Worker {
      * @throws FileNotFoundException
      *             is thrown in case the file could not be read.
      */
-    public Worker(File promelaFile) throws FileNotFoundException {
-
+    public Worker(File promelaFile, int index) throws FileNotFoundException {
         this.graph = GraphFactory.createGraph(promelaFile);
+        this.index = index;
     }
 
     private void dfsRed(State s) throws CycleFoundException {
-
         for (State t : graph.post(s)) {
             if (colors.hasColor(t, Color.CYAN)) {
                 throw new CycleFoundException();
@@ -50,7 +50,6 @@ public class Worker {
     }
 
     private void dfsBlue(State s) throws CycleFoundException {
-
         colors.color(s, Color.CYAN);
         for (State t : graph.post(s)) {
             if (colors.hasColor(t, Color.WHITE)) {
@@ -69,15 +68,14 @@ public class Worker {
         dfsBlue(s);
     }
 
-    public void run() {
+    @Override
+    public Boolean call(){
+        boolean result = false;
         try {
             nndfs(graph.getInitialState());
         } catch (CycleFoundException e) {
             result = true;
         }
-    }
-
-    public boolean getResult() {
         return result;
     }
 }
