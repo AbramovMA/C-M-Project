@@ -67,6 +67,7 @@ public class NNDFS implements NDFS {
                     // awaitedResults.remove(workerResult);
                 }
             awaitedResults.removeAll(toBeRemoved);
+            try{Thread.sleep(100);}catch(Exception e){}
         }
 
         threadPool.shutdownNow();
