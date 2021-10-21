@@ -9,6 +9,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import graph.Graph;
 import graph.GraphFactory;
@@ -25,7 +28,7 @@ public class Worker implements Callable<Boolean>{
     private final Colors                    colors = new Colors();
     // private final int                       index;
     private final Random                    random = new Random();
-    private final Map<State, AtomicInteger> backtrackingCount;
+    private final Map<State, Triple<Integer, Lock, Condition>> backtrackingCount;
     private final Set<State>                redStates;
 
     // Throwing an exception is a convenient way to cut off the search in case a
@@ -42,7 +45,7 @@ public class Worker implements Callable<Boolean>{
      * @throws FileNotFoundException
      *             is thrown in case the file could not be read.
      */
-    public Worker(File promelaFile, int index, Map<State, AtomicInteger> backtrackingCount, Set<State> redStates) throws FileNotFoundException {
+    public Worker(File promelaFile, int index, Map<State, Triple<Integer, Lock, Condition>> backtrackingCount, Set<State> redStates) throws FileNotFoundException {
         this.graph             = GraphFactory.createGraph(promelaFile);
         // this.index             = index;
         this.random.setSeed(index);
@@ -63,19 +66,23 @@ public class Worker implements Callable<Boolean>{
             }
         }
         if (s.isAccepting()){
-            AtomicInteger stateCount = backtrackingCount.get(s);
-            int newCount = stateCount.decrementAndGet();
+            Triple<Integer, Lock, Condition> stateCount = backtrackingCount.get(s);
+
+            Lock countLock = stateCount.second;
+            countLock.lock();
+
+            Condition empty = stateCount.third;
             
-            synchronized(stateCount){
-                if (newCount == 0)
-                    stateCount.notifyAll();
+                if (--stateCount.first == 0)
+                    empty.signalAll();
                 else
-                    while (stateCount.get() != 0)
+                    while (stateCount.first != 0)
                         try {
-                            stateCount.wait();
+                            empty.await();
                         } catch (Exception e) {
                         }
-            }
+
+            countLock.unlock();
         }
         redStates.add(s);
     }
@@ -99,8 +106,11 @@ public class Worker implements Callable<Boolean>{
         if (allRed){
             redStates.add(s);
         }else if (s.isAccepting()) {
-            backtrackingCount.putIfAbsent(s, new AtomicInteger(0));
-            backtrackingCount.get(s).incrementAndGet();
+            Lock newLock = new ReentrantLock();
+            backtrackingCount.putIfAbsent(s, new Triple<>(Integer.valueOf(0), newLock, newLock.newCondition()));
+            backtrackingCount.get(s).second.lock();
+            backtrackingCount.get(s).first++;
+            backtrackingCount.get(s).second.unlock();
             dfsRed(s);
         }
         colors.color(s, Color.BLUE);

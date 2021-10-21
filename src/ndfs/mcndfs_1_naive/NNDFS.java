@@ -13,9 +13,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import graph.State;
 import ndfs.NDFS;
+
+
 
 /**
  * Implements the {@link ndfs.NDFS} interface, mostly delegating the work to a
@@ -26,7 +31,7 @@ public class NNDFS implements NDFS {
     private final int                       numberOfWorkers;
     private final ExecutorService           threadPool;
     private final ArrayList<Worker>         workerList;
-    private final Map<State, AtomicInteger> backtrackingCount = new ConcurrentHashMap<>();
+    private final Map<State, Triple<Integer, Lock, Condition>> backtrackingCount = new ConcurrentHashMap<>();
     private final Set<State>                redStates         = new HashSet<>();
 
     /**
