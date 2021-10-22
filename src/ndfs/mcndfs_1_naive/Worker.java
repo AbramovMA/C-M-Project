@@ -8,6 +8,8 @@ import graph.GraphFactory;
 import graph.State;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -18,13 +20,12 @@ import java.util.concurrent.Future;
  */
 public class Worker implements Callable<Boolean> {
 
+    // globalCount and globalReds are static, meaning all instances of worker can access the same global data structures.
     private final Graph graph;
+    static final GlobalCount globalCount = new GlobalCount();
+    static final GlobalReds globalReds = new GlobalReds();
     private final Colors localColors = new Colors();
-    private final GlobalCount globalCount;
-    private final GlobalReds globalReds;
-    private final ArrayList<Future<Boolean>> futureArray;
     private boolean result = false;
-    private int threadId;
 
     // Throwing an exception is a convenient way to cut off the search in case a
     // cycle is found.
@@ -40,21 +41,25 @@ public class Worker implements Callable<Boolean> {
      * @throws FileNotFoundException
      *             is thrown in case the file could not be read.
      */
-    public Worker(File promelaFile, int id, GlobalCount globalCount, GlobalReds globalReds, ArrayList<Future<Boolean>> futureArray) throws FileNotFoundException {
-
+    public Worker(File promelaFile) throws FileNotFoundException {
         this.graph = GraphFactory.createGraph(promelaFile);
-        this.threadId = id;
-        this.globalCount = globalCount;
-        this.globalReds = globalReds;
-        this.futureArray = futureArray;
+    }
+
+    // Shuffles the post order. This allows each worker to traverse a different part of the graph.
+    private List<State> shufflePost(State s) {
+        List<State> l = graph.post(s);
+        Collections.shuffle(l);
+        return l;
     }
 
     private void dfsRed(State s) throws CycleFoundException {
         localColors.setPink(s, true);
-        for (State t : graph.post(s)) {
+        List<State> shuffledPost = shufflePost(s);
+        for (State t : shuffledPost) {
+            if (Thread.interrupted()) {
+                throw new CycleFoundException();
+            }
             if (localColors.hasColor(t, Color.CYAN)) {
-                System.out.println("Thread " + threadId + " found the accepting cycle.");
-                System.out.flush();
                 throw new CycleFoundException();
             }
             if (!localColors.isPink(s) && !globalReds.isRed(t)) {
@@ -63,11 +68,11 @@ public class Worker implements Callable<Boolean> {
         }
         if (s.isAccepting()) {
             globalCount.decCount(s);
-            while (true) {
-                if (globalCount.getCount(s) == 0) {
-                    break;
+            do {
+                if (Thread.interrupted()) {
+                    throw new CycleFoundException();
                 }
-            }
+            } while (globalCount.getCount(s) != 0);
         }
         globalReds.setRed(s, true);
         localColors.setPink(s, false);
@@ -75,7 +80,11 @@ public class Worker implements Callable<Boolean> {
 
     private void dfsBlue(State s) throws CycleFoundException {
         localColors.color(s, Color.CYAN);
-        for (State t : graph.post(s)) {
+        List<State> shuffledPost = shufflePost(s);
+        for (State t : shuffledPost) {
+            if (Thread.interrupted()) {
+                throw new CycleFoundException();
+            }
             if (localColors.hasColor(t, Color.WHITE) && !globalReds.isRed(t)) {
                 dfsBlue(t);
             }
@@ -87,6 +96,8 @@ public class Worker implements Callable<Boolean> {
         localColors.color(s, Color.BLUE);
     }
 
+    // This algorithm is implemented 1-to-1 with the Laarman paper.
+    // In certain section of the algorithm, the worker will check if it's interrupted, and if so throws a CycleFoundException.
     private void nndfs(State s) throws CycleFoundException {
         dfsBlue(s);
     }
@@ -95,6 +106,8 @@ public class Worker implements Callable<Boolean> {
         try {
             nndfs(graph.getInitialState());
         } catch (CycleFoundException e) {
+            // Even if the worker throws this when a cycle has not been found, the change to the value of result does not matter
+            // as the ndfs() function returns the result of the first computation completed.
             result = true;
         }
 

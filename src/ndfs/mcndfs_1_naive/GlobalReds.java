@@ -17,12 +17,8 @@ public class GlobalReds {
 
     public boolean isRed(State state) {
         synchronized (this) {
-            if (map.get(state) == null) {
-                return false;
-            }
-            else {
-                return map.get(state);
-            }
+            if (map.get(state) == null) return false;
+            else return map.get(state);
         }
     }
 }

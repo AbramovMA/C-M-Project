@@ -18,9 +18,6 @@ public class NNDFS implements NDFS {
     private final ArrayList<Worker> workers = new ArrayList<>();
     private final ExecutorService pool;
     private final CompletionService<Boolean> ecs;
-    private final GlobalCount globalCount = new GlobalCount();
-    private final GlobalReds globalReds = new GlobalReds();
-    private final ArrayList<Future<Boolean>> futureArray = new ArrayList<>();
 
     /**
      * Constructs an NDFS object using the specified Promela file.
@@ -32,9 +29,9 @@ public class NNDFS implements NDFS {
      */
     public NNDFS(File promelaFile, int nrWorkers) throws FileNotFoundException {
         pool = Executors.newFixedThreadPool(nrWorkers);
-        ecs = new ExecutorCompletionService<Boolean>(pool);
+        ecs = new ExecutorCompletionService<>(pool);
         for (int i = 0; i < nrWorkers; i++) {
-            workers.add(new Worker(promelaFile, i, globalCount, globalReds, futureArray));
+            workers.add(new Worker(promelaFile));
         }
     }
 
@@ -42,15 +39,18 @@ public class NNDFS implements NDFS {
     public boolean ndfs() {
         boolean cycleFound = false;
         for (Worker w : workers) {
-            futureArray.add(ecs.submit(w));
+            ecs.submit(w);
         }
 
+        // ecs.take().get() blocks until the first computation is completed, and returns the value to cycleFound.
+        // Afterwards, pool.shutdownNow() is called to interrupt all the threads.
         try {
             cycleFound = ecs.take().get();
+            pool.shutdownNow();
         } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
 
-        pool.shutdownNow();
         return cycleFound;
     }
 }

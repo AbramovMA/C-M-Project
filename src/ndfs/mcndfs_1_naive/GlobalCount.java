@@ -11,36 +11,22 @@ public class GlobalCount {
 
     public void incCount(State state) {
         synchronized (this) {
-            try {
-                if (map.get(state) == null) {
-                    map.put(state, 1);
-                } else {
-                    map.put(state, map.get(state) + 1);
-                }
-            } catch (Exception e) {
-                System.out.println("incCount failed: " + e);
+            if (map.get(state) == null) {
+                map.put(state, 1);
+            } else {
+                map.put(state, map.get(state) + 1);
             }
         }
     }
 
     public void decCount(State state) {
         synchronized (this) {
-            try {
-                map.put(state, map.get(state) - 1);
-            } catch (Exception e) {
-                System.out.println("decCount failed: " + e);
-            }
+            map.put(state, map.get(state) - 1);
         }
     }
 
     public int getCount(State state) {
         synchronized (this) {
-            try {
-                return map.get(state);
-            } catch (Exception e) {
-                System.out.println("getCount failed: " + e);
-            }
-
             return map.get(state);
         }
     }

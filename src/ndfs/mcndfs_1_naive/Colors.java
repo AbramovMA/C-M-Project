@@ -10,8 +10,9 @@ import graph.State;
  */
 public class Colors {
 
-    private final Map<State, Color> map = new HashMap<State, Color>();
-    private final Map<State, Boolean> pinkMap = new HashMap<State, Boolean>();
+    private final Map<State, Color> map = new HashMap<>();
+    // Local pinks.
+    private final Map<State, Boolean> pinkMap = new HashMap<>();
 
     /**
      * Returns <code>true</code> if the specified state has the specified color,
