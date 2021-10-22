@@ -11,7 +11,6 @@ import graph.State;
 public class Colors {
 
     private final Map<State, Color> map = new HashMap<>();
-    // Local pinks.
     private final Map<State, Boolean> pinkMap = new HashMap<>();
 
     /**

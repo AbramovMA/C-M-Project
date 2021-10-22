@@ -7,11 +7,11 @@ import graph.State;
 
 public class GlobalReds {
 
-    private final Map<State, Boolean> map = new HashMap<State, Boolean>();
+    private final Map<State, Boolean> map = new HashMap<>();
 
-    public void setRed(State state, boolean bool) {
+    public void setRed(State state) {
         synchronized (this) {
-            map.put(state, bool);
+            map.put(state, true);
         }
     }
 

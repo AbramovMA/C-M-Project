@@ -37,17 +37,28 @@ public class NNDFS implements NDFS {
 
     @Override
     public boolean ndfs() {
+        final ArrayList<Future<Boolean>> futureArray = new ArrayList<>();
         boolean cycleFound = false;
+
         for (Worker w : workers) {
-            ecs.submit(w);
+            futureArray.add(ecs.submit(w));
         }
 
-        // ecs.take().get() blocks until the first computation is completed, and returns the value to cycleFound.
-        // Afterwards, pool.shutdownNow() is called to interrupt all the threads.
+        while (!futureArray.isEmpty() && !cycleFound) {
+            try {
+                Future<Boolean> f = ecs.take();
+                futureArray.remove(f);
+                cycleFound = f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Send an interrupt signal to all workers and await their termination.
+        pool.shutdownNow();
         try {
-            cycleFound = ecs.take().get();
-            pool.shutdownNow();
-        } catch (InterruptedException | ExecutionException e) {
+            pool.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
 

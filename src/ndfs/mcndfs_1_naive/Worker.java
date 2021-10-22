@@ -20,11 +20,10 @@ import java.util.concurrent.Future;
  */
 public class Worker implements Callable<Boolean> {
 
-    // globalCount and globalReds are static, meaning all instances of worker can access the same global data structures.
-    private final Graph graph;
     static final GlobalCount globalCount = new GlobalCount();
     static final GlobalReds globalReds = new GlobalReds();
     private final Colors localColors = new Colors();
+    private final Graph graph;
     private boolean result = false;
 
     // Throwing an exception is a convenient way to cut off the search in case a
@@ -56,25 +55,21 @@ public class Worker implements Callable<Boolean> {
         localColors.setPink(s, true);
         List<State> shuffledPost = shufflePost(s);
         for (State t : shuffledPost) {
-            if (Thread.interrupted()) {
+            if (Thread.interrupted())
                 throw new CycleFoundException();
-            }
-            if (localColors.hasColor(t, Color.CYAN)) {
+            if (localColors.hasColor(t, Color.CYAN))
                 throw new CycleFoundException();
-            }
-            if (!localColors.isPink(s) && !globalReds.isRed(t)) {
+            if (!localColors.isPink(s) && !globalReds.isRed(t))
                 dfsRed(t);
-            }
         }
         if (s.isAccepting()) {
             globalCount.decCount(s);
             do {
-                if (Thread.interrupted()) {
+                if (Thread.interrupted())
                     throw new CycleFoundException();
-                }
             } while (globalCount.getCount(s) != 0);
         }
-        globalReds.setRed(s, true);
+        globalReds.setRed(s);
         localColors.setPink(s, false);
     }
 
@@ -82,12 +77,10 @@ public class Worker implements Callable<Boolean> {
         localColors.color(s, Color.CYAN);
         List<State> shuffledPost = shufflePost(s);
         for (State t : shuffledPost) {
-            if (Thread.interrupted()) {
+            if (Thread.interrupted())
                 throw new CycleFoundException();
-            }
-            if (localColors.hasColor(t, Color.WHITE) && !globalReds.isRed(t)) {
+            if (localColors.hasColor(t, Color.WHITE) && !globalReds.isRed(t))
                 dfsBlue(t);
-            }
         }
         if (s.isAccepting()) {
             globalCount.incCount(s);
@@ -96,8 +89,6 @@ public class Worker implements Callable<Boolean> {
         localColors.color(s, Color.BLUE);
     }
 
-    // This algorithm is implemented 1-to-1 with the Laarman paper.
-    // In certain section of the algorithm, the worker will check if it's interrupted, and if so throws a CycleFoundException.
     private void nndfs(State s) throws CycleFoundException {
         dfsBlue(s);
     }
@@ -106,8 +97,6 @@ public class Worker implements Callable<Boolean> {
         try {
             nndfs(graph.getInitialState());
         } catch (CycleFoundException e) {
-            // Even if the worker throws this when a cycle has not been found, the change to the value of result does not matter
-            // as the ndfs() function returns the result of the first computation completed.
             result = true;
         }
 
