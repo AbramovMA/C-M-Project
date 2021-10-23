@@ -9,6 +9,7 @@ public class GlobalCount {
 
     private final Map<State, Integer> map = new HashMap<>();
 
+    // Each function features a synchronized block, since workers need to be able to synchronize in the non-concurrent HashMap.
     public void incCount(State state) {
         synchronized (this) {
             if (map.get(state) == null) {

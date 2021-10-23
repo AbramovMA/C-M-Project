@@ -10,6 +10,8 @@ public class GlobalCount {
 
     private final Map<State, AtomicInteger> map = new ConcurrentHashMap<>();
 
+    // Synchronized blocks are removed since the data structure is a ConcurrentHashMap.
+    // The type of values in the map are AtomicIntegers, meaning updates can be performed atomically.
     public void incCount(State state) {
         map.putIfAbsent(state, new AtomicInteger(0));
         map.get(state).incrementAndGet();

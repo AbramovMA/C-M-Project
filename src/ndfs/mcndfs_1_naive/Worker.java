@@ -20,6 +20,7 @@ import java.util.concurrent.Future;
  */
 public class Worker implements Callable<Boolean> {
 
+    // Global data structures globalCount and globalReds, which can be accessed by all worker objects.
     static final GlobalCount globalCount = new GlobalCount();
     static final GlobalReds globalReds = new GlobalReds();
     private final Colors localColors = new Colors();
@@ -51,6 +52,7 @@ public class Worker implements Callable<Boolean> {
         return l;
     }
 
+    // dfsRed implemented exactly as found in the Laarman paper.
     private void dfsRed(State s) throws CycleFoundException {
         localColors.setPink(s, true);
         List<State> shuffledPost = shufflePost(s);
@@ -73,6 +75,7 @@ public class Worker implements Callable<Boolean> {
         localColors.setPink(s, false);
     }
 
+    // dfsBlue from the paper.
     private void dfsBlue(State s) throws CycleFoundException {
         localColors.color(s, Color.CYAN);
         List<State> shuffledPost = shufflePost(s);

@@ -10,6 +10,7 @@ import java.util.Map;
  */
 public class Colors {
 
+    // Local colors
     private final Map<State, Color> map = new HashMap<>();
     private final Map<State, Boolean> pinkMap = new HashMap<>();
 

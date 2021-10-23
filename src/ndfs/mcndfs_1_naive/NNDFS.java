@@ -44,6 +44,8 @@ public class NNDFS implements NDFS {
             futureArray.add(ecs.submit(w));
         }
 
+        // If the returned future has a true value, break out of the while loop. Else, continue to wait
+        // for all futures to finish their tasks
         while (!futureArray.isEmpty() && !cycleFound) {
             try {
                 Future<Boolean> f = ecs.take();
